@@ -35,23 +35,29 @@ class drom:
         # Получение данных
 
         # Марки:
+        # brands_soup = BeautifulSoup(self.html_brands, 'html.parser') \
+        #     .find('div', class_='css-2u02es ete74kl0') \
+        #     .find_all('a')
         brands_soup = BeautifulSoup(self.html_brands, 'html.parser') \
-            .find('div', class_='css-2u02es ete74kl0') \
+            .find('div', class_='css-1xdu4vx ete74kl0') \
             .find_all('a')
 
         # Города:
+        # cities_soup = BeautifulSoup(self.html_cities, 'html.parser') \
+        #     .find(class_='b-selectCars b-media-cont') \
+        #     .find_all('a')
         cities_soup = BeautifulSoup(self.html_cities, 'html.parser') \
-            .find(class_='b-selectCars b-media-cont') \
+            .find('div', class_='b-selectCars b-media-cont') \
             .find_all('a')
 
         # Атрибуты
-        self.brands = (np.array(brands_soup).T)[0]
+        self.brands = np.unique(brands_soup).T
         self.cities = (np.array(cities_soup).T)[0]
 
         self.brand = None
         self.models = None
         self.city = None
-        self.all_cars = None
+        self.all_cars = pd.read_csv('all_cars_models.csv', index_col=0)
 
 
     def get_city_link(self, city):
@@ -64,11 +70,12 @@ class drom:
 
     def get_brand_link(self, brand):
     # Получатель ссылки бренда
-        soup = BeautifulSoup(self.html_brands, 'html.parser') \
-        .find('div', class_='css-2u02es ete74kl0') \
-        .find('a', text=brand) \
-        .get('href')
-        return soup
+        if brand in self.brands:
+            soup = BeautifulSoup(self.html_brands, 'html.parser') \
+            .find('div', class_='css-1xdu4vx ete74kl0') \
+            .find('a', text=brand) \
+            .get('href')
+            return soup
 
     def get_models(self, brand):
         # Получить модели
@@ -76,50 +83,167 @@ class drom:
         with req.get(url, headers=self.headers) as r:
             if r.status_code == 200:
                 html_models = r.text
-        soup = BeautifulSoup(html_models, 'html.parser') \
-            .find('div', class_='css-2u02es ete74kl0') \
-            .get_text("|").split('|')
-        models = np.array(soup)
-        self.models = models
-        return models
+                soup = BeautifulSoup(html_models, 'html.parser') \
+                    .find('div', class_='css-1xdu4vx ete74kl0') \
+                    .get_text("|").split('|')
+                models = np.array(soup)
+                return models
+
+    def get_model_link(self, brand='ГАЗ', model='31105 Волга'):
+        models_list = self.get_models(brand=brand)
+        if model in models_list:
+            url = self.get_brand_link(brand)
+            with req.get(url, headers=self.headers) as r:
+                if r.status_code == 200:
+                    html_models = r.text
+                    link = BeautifulSoup(html_models, 'html.parser') \
+                        .find(text=model)\
+                        .findParent()\
+                        .get('href')
+                    return link
 
     def get_all_cars(self):
 
-        dat = pd.DataFrame([], columns=['model'], index=self.brands)
-        dat['model'] = [self.get_models(x) for x in dat.index]
-        dat = dat.explode(column='model')
+        dat = pd.DataFrame([], columns=['brand', 'model', 'city', 'link'])
+        dat['brand'] = self.brands
+        dat['model'] = dat.brand.apply(self.get_models)
+        dat = dat.explode(column='model').reset_index(drop=True)
         self.all_cars = dat
         return dat
 
     def full_link(self, brand='Audi', model='A4', city='Москва'):
         if brand in self.brands:
-            brand_link = ''.join(self.get_brand_link(brand).split('/')[4:])
-
+            if model in self.get_models(brand):
+                model_link = self.get_model_link(brand=brand, model=model)[28:] + 'used/'
+            else:
+                model_link = ''.join(self.get_brand_link(brand).split('/')[4:])
+                print('нет такой модели')
             if city in self.cities:
                 city_link = self.get_city_link(city)[:-5]
             else:
+                print('Нет такого города')
                 city_link = 'https://auto.drom.ru/'
 
-
-            if model in self.get_models(brand):
-                model = '/' + model.lower()
-            else:
-                model = ''
+            link = city_link + model_link
+            return link
         else:
-            return 'Некорректное значение'
-
-        link = f'{city_link}{brand_link}{model}/used/'
-        return link
+            print('Некорректное значение')
 
 
+    def get_sale_links(self, brand='Audi', model='A4', city='Санкт-Петербург', page=100):
+        if city in self.cities:
+            if brand in self.brands:
+               if model in self.get_models(brand):
 
+                    link = self.full_link(brand=brand, model=model, city=city)
+                    arr = np.array([])
+
+                    for i in range(1, page):
+                        link2 = link + f'page{i}/'
+                        with req.get(link2, headers=self.headers) as r:
+                            if r.status_code == 200:
+                                html = r.text
+                                soup = BeautifulSoup(html, 'html.parser')\
+                                    .find('div', class_='css-10ib5jr e93r9u20')\
+                                    .find_all('a', class_="css-1psewqh ewrty961")
+                                if soup != []:
+                                    for item in soup:
+                                        arr = np.append(arr, item.get('href'))
+                                else:
+                                    break
+                    return arr
+               else:
+                   print('Нет такой модели')
+            else:
+                print('Нет такой марки')
+        else:
+            print('Нет города')
+
+    def get_car_data(self, link):
+
+        with req.get(link, headers=self.headers) as r:
+
+            if r.status_code == 200:
+                html = r.text
+                soup = BeautifulSoup(html, 'html.parser')\
+                        .find('div', class_='css-0 epjhnwz1')
+                # Получение цены
+                price = ''.join(soup.find('div', class_='css-1003rx0 e162wx9x0')\
+                .get_text()\
+                .split()[:-1])
+                if price.isnumeric() == True:
+                    price = int(price)
+                else:
+                    price = np.nan
+                # Получение описания
+                description = soup.find('tbody')
+                columns = description.find_all('th')
+                data = description.get_text('|', strip=True).replace('л.с.', '').split('|')
+                d = {}
+                table = np.array(columns)
+                data_arr = np.array(data)
+                for col in table:
+                    idx = int(np.where(data_arr == col)[0])
+                    d[col[0]] = data_arr[idx+1]
+                dat = pd.DataFrame([d])
+                dat['price'] = price
+                dat['link'] = link
+        return dat
 drom = drom()
+# print(drom.get_model_link())
+# print(drom.get_model_link(brand='Audi', model='A4'))
+# print(drom.full_link(brand='Land Rover', model='Range Rover', city='Санкт-Петербург'))
+# print(drom.get_all_cars())
+# print(drom.get_sale_links('ГАЗ', '3110 Волга', "Москва"))
+# dat = pd.DataFrame([['ГАЗ', '3110 Волга', "Москва"]], columns=['brand', 'model', 'city'])
+# dat['link'] = [drom.get_sale_links('ГАЗ', '3110 Волга', "Москва")]
+# dat = dat.explode('link')
+# dat2 = pd.DataFrame([])
+# for link in dat.link:
+#     dat2 = dat2.append(drom.get_car_data(link))
+# dat = dat.merge(dat2, on='link')
+# print(dat)
 
-# print(drom.get_city_link('Санкт-Петер'))
-# print(drom.get_brand_link('Audi'))
-# print(drom.get_models('Audi'))
-print(drom.full_link(brand='ГАЗ', model='3110', city='Нижний Новгород'))
-print(drom.get_all_cars())
+print(drom.all_cars)
+
+# cars = drom.get_all_cars().head(3)
+# cars.city = 'Москва'
+# cars.to_csv('cars.csv')
+
+# cars = pd.read_csv('cars.csv', index_col=0)
+# dat = pd.DataFrame([])
+# cars.link = cars.link.astype('object')
+# for i in cars.index:
+#     car = cars.iloc[i]
+#     linklist = drom.get_sale_links(car.brand, car.model, car.city)
+#     if linklist.size != 0:
+#         cars.at[i, 'link'] = linklist
+# cars = cars.explode('link')
+# print(cars)
+# Загатовка
+# drom.get_all_cars().to_csv('all_cars_models.csv')
+# print('Файл есть')
+
+
+# cars.link = [cars[['brand', 'model', 'city']].apply(drom.get_sale_links)]
+# print(cars)
+# link = 'https://moscow.drom.ru/uaz/patriot/43021634.html'
+# print(drom.get_car_data(link))
+# dat = drom.get_all_cars()
+# links = drom.get_sale_links()
+# dat.loc['Audi'].query('model == "A4"')['link'].fillna([['l', 'b']])
+# dat = dat.explode(column='link')
+# print(dat.loc['Audi'].query('model == "A4"')['link'].values)
+
+
+
+# dat = drom.get_all_cars()
+# arr = drom.get_sale_links()
+# filter = ((dat.model == 'A4') & (dat.brand == 'Audi'))
+# idx = dat[filter].index
+# dat.loc[idx, 'link'] = [arr]
+# print(dat.query('brand == "Audi"'))
+
 
 
 # def get_html(url):
