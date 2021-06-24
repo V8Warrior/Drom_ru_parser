@@ -33,31 +33,66 @@ class drom:
                 self.html_cities = r.text
 
         # Получение данных
-
-        # Марки:
-        # brands_soup = BeautifulSoup(self.html_brands, 'html.parser') \
-        #     .find('div', class_='css-2u02es ete74kl0') \
-        #     .find_all('a')
+            # Марки:
         brands_soup = BeautifulSoup(self.html_brands, 'html.parser') \
             .find('div', class_='css-1xdu4vx ete74kl0') \
             .find_all('a')
+        self.brands = np.unique(brands_soup).T
 
-        # Города:
-        # cities_soup = BeautifulSoup(self.html_cities, 'html.parser') \
-        #     .find(class_='b-selectCars b-media-cont') \
-        #     .find_all('a')
+            # Города:
         cities_soup = BeautifulSoup(self.html_cities, 'html.parser') \
             .find('div', class_='b-selectCars b-media-cont') \
             .find_all('a')
-
-        # Атрибуты
-        self.brands = np.unique(brands_soup).T
         self.cities = (np.array(cities_soup).T)[0]
 
-        self.brand = None
-        self.models = None
-        self.city = None
-        self.all_cars = pd.read_csv('all_cars_models.csv', index_col=0)
+        # Кэш
+            # Регионы
+        try:
+            dat = pd.read_csv('region_data.csv', index_col=0)
+            self.regions = dat
+        except IOError:
+            self.regions = None
+            print('File with region data not exist, use function: ".get_regions()"')
+
+            # Каталог машин
+        try:
+            self.all_cars = pd.read_csv('all_cars_models.csv', index_col=0)
+        except IOError:
+            self.all_cars = None
+            print('File with car data not exist, use function: ".get_cars()"')
+
+        # self.brand = None
+        # self.models = None
+        # self.city = None
+
+    def get_regions(self):
+        # Получить кэш регионов
+        html = self.html_cities
+        dat = pd.DataFrame([], columns=[ 'id', 'region', 'link'])
+        soup = BeautifulSoup(html, 'html.parser')\
+            .find('div', class_='b-selectCars b-media-cont')
+        text = soup.find_all('a', class_='b-link')
+        links = soup\
+            .find_all('a', class_='b-link', href=True)
+        reg_arr =  np.array(text)
+        link_arr = np.array([])
+        for link in links:
+            link_arr = np.append(link_arr, link['href'])
+
+        dat['link'] = link_arr
+        dat['region'] = reg_arr
+
+        dat2 = dat.copy()
+        dat2.loc[29, 'link'] = 'https://auto.drom.ru/region77/'
+        dat2.loc[63, 'link'] = 'https://auto.drom.ru/region78/'
+
+        reg =lambda x:  int(re.findall(r'[0-9]+', x)[0])
+        dat2.id = dat2.link.apply(reg)
+        dat2.sort_values(by='id', inplace=True)
+        dat2.set_index('id', inplace=True)
+        dat2.to_csv('region_data.csv')
+        self.regions = dat2
+        return dat2
 
 
     def get_city_link(self, city):
@@ -90,8 +125,7 @@ class drom:
                 return models
 
     def get_model_link(self, brand='ГАЗ', model='31105 Волга'):
-        models_list = self.get_models(brand=brand)
-        if model in models_list:
+        if (brand in self.all_cars.brand.values) and (model in self.all_cars.model.values):
             url = self.get_brand_link(brand)
             with req.get(url, headers=self.headers) as r:
                 if r.status_code == 200:
@@ -102,65 +136,74 @@ class drom:
                         .get('href')
                     return link
 
-    def get_all_cars(self):
+    def get_cars(self):
 
-        dat = pd.DataFrame([], columns=['brand', 'model', 'city', 'link'])
+        dat = pd.DataFrame([], columns=['brand', 'model'])
         dat['brand'] = self.brands
         dat['model'] = dat.brand.apply(self.get_models)
         dat = dat.explode(column='model').reset_index(drop=True)
         self.all_cars = dat
+        dat.to_csv('all_cars_models.csv')
         return dat
 
-    def full_link(self, brand='Audi', model='A4', city='Москва'):
-        if brand in self.brands:
-            if model in self.get_models(brand):
+    def region_exist(self, city):
+        if str(city).isdigit():
+            city = int(city)
+            if city in self.regions.index:
+                return 'digit'
+            else:
+                raise Exception('Нет такого номера региона в базе')
+        elif city.isalpha():
+            val = self.regions.query(f'region.str.contains("{city}")').link.values
+            if val.size != 0:
+                return 'word'
+            else:
+                raise Exception('Нет такого названия региона в базе')
+
+    def get_full_link(self, brand=None, model=None, city=None, string=None):
+        if string != None:
+            brand = string[0]
+            model = string[1]
+            city = string[2]
+        # Отработка истинности региона
+        if self.region_exist(city) == 'digit':
+            link = self.regions.loc[int(city), 'link']
+        elif self.region_exist(city) == 'word':
+            link = self.regions.query(f"region.str.contains('{city}')").link.values[0]
+        else:
+            link = 'https://auto.drom.ru/'
+
+        # Отработка истинности автомобилей
+        if brand in self.all_cars.brand.values:
+            if model in self.all_cars.model.values:
+                # Создание ссылки
                 model_link = self.get_model_link(brand=brand, model=model)[28:] + 'used/'
+                return link + model_link
             else:
-                model_link = ''.join(self.get_brand_link(brand).split('/')[4:])
-                print('нет такой модели')
-            if city in self.cities:
-                city_link = self.get_city_link(city)[:-5]
-            else:
-                print('Нет такого города')
-                city_link = 'https://auto.drom.ru/'
-
-            link = city_link + model_link
-            return link
+                raise Exception('Нет такой модели машины в базе')
         else:
-            print('Некорректное значение')
+            raise Exception('Нет такой марки машины в базе')
 
-
-    def get_sale_links(self, brand='Audi', model='A4', city='Санкт-Петербург', page=100):
-        if city in self.cities:
-            if brand in self.brands:
-               if model in self.get_models(brand):
-
-                    link = self.full_link(brand=brand, model=model, city=city)
-                    arr = np.array([])
-
-                    for i in range(1, page):
-                        link2 = link + f'page{i}/'
-                        with req.get(link2, headers=self.headers) as r:
-                            if r.status_code == 200:
-                                html = r.text
-                                soup = BeautifulSoup(html, 'html.parser')\
-                                    .find('div', class_='css-10ib5jr e93r9u20')\
-                                    .find_all('a', class_="css-1psewqh ewrty961")
-                                if soup != []:
-                                    for item in soup:
-                                        arr = np.append(arr, item.get('href'))
-                                else:
-                                    break
-                    return arr
-               else:
-                   print('Нет такой модели')
-            else:
-                print('Нет такой марки')
-        else:
-            print('Нет города')
+    def get_data_links(self, brand, model, city, page=100):
+        link = self.get_full_link(brand, model, city)
+        link_arr  = np.array([])
+        for i in range(1, page):
+            link2 = link + f'page{i}/'
+            with req.get(link2, headers=self.headers) as r:
+                if r.status_code == 200:
+                    html = r.text
+                    soup = BeautifulSoup(html, 'html.parser') \
+                        .find('div', class_='css-10ib5jr e93r9u20') \
+                        .find_all('a', class_="css-1psewqh ewrty961")
+                    if soup != []:
+                        for item in soup:
+                            link_arr = np.append(link_arr, item['href'])
+                    else:
+                        break
+        return link_arr
 
     def get_car_data(self, link):
-
+        # Получить описание авто
         with req.get(link, headers=self.headers) as r:
 
             if r.status_code == 200:
@@ -171,14 +214,25 @@ class drom:
                 price = ''.join(soup.find('div', class_='css-1003rx0 e162wx9x0')\
                 .get_text()\
                 .split()[:-1])
-                if price.isnumeric() == True:
+                if price.isnumeric():
                     price = int(price)
                 else:
                     price = np.nan
+                # Получение цены
+                year_str = BeautifulSoup(html, 'html.parser')\
+                        .find('h1', class_='css-1rmdgdb e18vbajn0')\
+                        .getText('|').split()
+
+                year = year_str[year_str.index('год') - 1]
+                if year.isnumeric():
+                    year = int(year)
+                else:
+                    year = np.nan
                 # Получение описания
                 description = soup.find('tbody')
                 columns = description.find_all('th')
-                data = description.get_text('|', strip=True).replace('л.с.', '').split('|')
+                data = description\
+                .get_text('|').replace('л.с.', '').split('|')
                 d = {}
                 table = np.array(columns)
                 data_arr = np.array(data)
@@ -186,15 +240,125 @@ class drom:
                     idx = int(np.where(data_arr == col)[0])
                     d[col[0]] = data_arr[idx+1]
                 dat = pd.DataFrame([d])
+                dat['year'] = year
                 dat['price'] = price
                 dat['link'] = link
         return dat
+
+    def errlog(self, file):
+        with open('err_drom.txt', 'w') as f:
+            f.write(str(file))
+
+    def get_data(self, brand='all', model='all', city=77):
+
+        global errlist
+        dat = self.all_cars
+
+        if self.region_exist(city) == 'word':
+            city = self.regions.query(f'region.str.contains("{city}")').index[0]
+        elif self.region_exist(city) == 'digit':
+            city = int(city)
+        else:
+            raise Exception('Город не найден')
+        if brand == 'all':
+            brandlist = dat.brand.values
+        elif isinstance(brand, str):
+            brandlist = np.array([brand])
+        else:
+            brandlist = np.array(tuple(brand))
+
+        # Подгтовка DataFrame
+
+        cardat = dat.copy()
+        cardat = cardat[cardat.brand.isin(brandlist)]
+        cardat['reg_id'] = city
+        cardat['reg'] = self.regions.loc[city, 'region']
+        cardat['link'] = np.nan
+        cardat.link = cardat.link.astype('object')
+        arr = cardat[['brand', 'model', 'reg_id']].values
+        print('Процесс сборки всех объявлений...')
+
+        for i, row in enumerate(arr):
+            print(f'Сбор данных {i+1} / {arr.shape[0]}, машина: {row[0]}, {row[1]}, регион: {row[2]}')
+            idx = cardat.query(f'(brand == "{row[0]}") & (model == "{row[1]}") & (reg_id == {row[2]})').index[0]
+            try:
+                linklist = self.get_data_links(brand=row[0], model=row[1], city=row[2])
+                if linklist.size != 0:
+                    cardat.at[idx, 'link'] = linklist
+            except UnicodeDecodeError:
+                errlist.append([row, 'Unicode_error'])
+                print(f'Проблема в {row}')
+                self.errlog(errlist)
+            except AttributeError:
+                errlist.append([row, 'NoneType'])
+                print(f'Проблема в {row}')
+                self.errlog(errlist)
+
+        print('Удаление строк без ссылок...')
+        cardat = cardat.dropna(subset=['link'])
+        print('Распределение по строкам...')
+        cardat = cardat.explode(column='link')
+
+        linkdata = pd.DataFrame([])
+        links = cardat.link.dropna().values
+        if links.size !=0:
+            print('Процесс сборки данных с объявлений...')
+            for i, link in enumerate(links):
+                print(f'Сборка доступных объявлений {i+1} / {links.shape[0]}')
+                try:
+                    linkdata = linkdata.append(drom.get_car_data(link))
+                except UnicodeDecodeError:
+                    errlist.append([link, 'Unicode_error'])
+                    print(f'Проблема в {link}')
+                    self.errlog(errlist)
+                except AttributeError:
+                    errlist.append([link, 'NoneType'])
+                    print(f'Проблема в {link}')
+                    self.errlog(errlist)
+                cardat = cardat.merge(linkdata, on='link')
+        else:
+            errlist.append([f'No links in region: {city}'])
+            self.errlog(errlist)
+
+        filename = f'parsers\cars_drom_region_{city}.csv'
+        cardat.to_csv(filename)
+        return cardat
+
 drom = drom()
-# print(drom.get_model_link())
-# print(drom.get_model_link(brand='Audi', model='A4'))
-# print(drom.full_link(brand='Land Rover', model='Range Rover', city='Санкт-Петербург'))
-# print(drom.get_all_cars())
+regions = drom.regions.index.values
+errlist = []
+for i, code in enumerate(regions):
+    print(code)
+    print(f'регион {i+1} / {regions.shape[0]}')
+    drom.get_data(brand='all', city=code)
+# with open('err_drom.txt', 'r') as f:
+#     f.read()
+# l = [np.array(['1', '2']), ['3'], ['4']]
+# print(str(l))
+# with open('test.txt', 'w') as f:
+#     f.write(str(l))
+# with open('errlist.txt', 'r') as f:
+#     print(f.read())
+# print(np.fromfile('errlist.npy'))
+# for
+
+# print(drom.get_car_data(link))
+# print(drom.get_full_link(string=['Audi', 'A5', 'Москва']))
+# Распределение данных по ссылкам
+# dat = pd.DataFrame([], columns=['link'])
+# dat.link = drom.get_data_links(brand='Audi', model='A5', city='Москва')
+# dat2 = pd.DataFrame([])
+# for link in dat.link.values:
+#     dat2 = dat2.append(drom.get_car_data(link))
+# print(dat.merge(dat2, on='link'))
+
+# print(drom.get_full_link(brand='Land Rover', model='Range Rover', city='Санкт-Петербург'))
+
+# # print(drom.get_all_cars())
 # print(drom.get_sale_links('ГАЗ', '3110 Волга', "Москва"))
+
+
+
 # dat = pd.DataFrame([['ГАЗ', '3110 Волга', "Москва"]], columns=['brand', 'model', 'city'])
 # dat['link'] = [drom.get_sale_links('ГАЗ', '3110 Волга', "Москва")]
 # dat = dat.explode('link')
@@ -204,7 +368,7 @@ drom = drom()
 # dat = dat.merge(dat2, on='link')
 # print(dat)
 
-print(drom.all_cars)
+# print(drom.all_cars)
 
 # cars = drom.get_all_cars().head(3)
 # cars.city = 'Москва'
