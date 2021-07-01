@@ -301,7 +301,7 @@ class drom:
 
         # сохранение кэша
         print(f'Кэширование региона с кодом {city}')
-        cardat.to_csv(f'parsers\drom_ru_region_{city}_cash.csv')
+        cardat.to_csv(f'parsers\drom_ru_region_{city}_cash.csv', index = False)
         return cardat
 
     def unpack_links(self, cardat):
@@ -314,7 +314,7 @@ class drom:
             for i, link in enumerate(links):
                 print(f'Сборка доступных объявлений {i+1} / {links.shape[0]}')
                 try:
-                    linkdata = linkdata.append(drom.get_car_data(link))
+                    linkdata = linkdata.append(self.get_car_data(link))
                 except UnicodeDecodeError:
                     errlist.append([link, 'Unicode_error'])
                     print(f'Проблема в {link}')
@@ -323,13 +323,13 @@ class drom:
                     errlist.append([link, 'NoneType'])
                     print(f'Проблема в {link}')
                     self.errlog(errlist, city)
-                cardat = cardat.merge(linkdata, on='link')
+            cardat = cardat.merge(linkdata, on='link')
         else:
             errlist.append([f'No links in region: {city}'])
             self.errlog(errlist, city)
 
         filename = f'parsers\cars_drom_region_{city}.csv'
-        cardat.to_csv(filename)
+        cardat.to_csv(filename, index=False)
         return cardat
 
 drom = drom()
@@ -338,8 +338,11 @@ errlist = []
 for i, code in enumerate(regions):
     print(code)
     print(f'регион {i + 1} / {regions.shape[0]}')
-    if osp.exists(f'parsers/drom_ru_region_{code}_cash.csv') == False:
-        drom.get_data(brand='all', city=code)
-    else:
-        dat = pd.read_csv(f'parsers/drom_ru_region_{code}_cash.csv')
+    if osp.exists(f'parsers/cars_drom_region_{code}.csv') == False:
+        if osp.exists(f'parsers/drom_ru_region_{code}_cash.csv') == False:
+            dat = drom.get_data(brand='all', city=code)
+        else:
+            dat = pd.read_csv(f'parsers/drom_ru_region_{code}_cash.csv')
         drom.unpack_links(dat)
+    else:
+        print(f'Файл с номером региона {code} уже существует')
