@@ -1,0 +1,85 @@
+id,region,link
+1,Республика Адыгея,https://auto.drom.ru/region1/
+2,Республика Башкортостан,https://auto.drom.ru/region2/
+3,Республика Бурятия,https://auto.drom.ru/region3/
+4,Республика Алтай,https://auto.drom.ru/region4/
+5,Республика Дагестан,https://auto.drom.ru/region5/
+6,Республика Ингушетия,https://auto.drom.ru/region6/
+7,Кабардино-Балкарская Республика,https://auto.drom.ru/region7/
+8,Республика Калмыкия,https://auto.drom.ru/region8/
+9,Карачаево-Черкесская Республика,https://auto.drom.ru/region9/
+10,Республика Карелия,https://auto.drom.ru/region10/
+11,Республика Коми,https://auto.drom.ru/region11/
+12,Республика Марий Эл,https://auto.drom.ru/region12/
+13,Республика Мордовия,https://auto.drom.ru/region13/
+14,Республика Саха (Якутия),https://auto.drom.ru/region14/
+15,Республика Северная Осетия,https://auto.drom.ru/region15/
+16,Республика Татарстан,https://auto.drom.ru/region16/
+17,Республика Тыва,https://auto.drom.ru/region17/
+18,Удмуртская Республика,https://auto.drom.ru/region18/
+19,Республика Хакасия,https://auto.drom.ru/region19/
+20,Чеченская Республика,https://auto.drom.ru/region20/
+21,Чувашская Республика,https://auto.drom.ru/region21/
+22,Алтайский край,https://auto.drom.ru/region22/
+23,Краснодарский край,https://auto.drom.ru/region23/
+24,Красноярский край,https://auto.drom.ru/region24/
+25,Приморский край,https://auto.drom.ru/region25/
+26,Ставропольский край,https://auto.drom.ru/region26/
+27,Хабаровский край,https://auto.drom.ru/region27/
+28,Амурская область,https://auto.drom.ru/region28/
+29,Архангельская область,https://auto.drom.ru/region29/
+30,Астраханская область,https://auto.drom.ru/region30/
+31,Белгородская область,https://auto.drom.ru/region31/
+32,Брянская область,https://auto.drom.ru/region32/
+33,Владимирская область,https://auto.drom.ru/region33/
+34,Волгоградская область,https://auto.drom.ru/region34/
+35,Вологодская область,https://auto.drom.ru/region35/
+36,Воронежская область,https://auto.drom.ru/region36/
+37,Ивановская область,https://auto.drom.ru/region37/
+38,Иркутская область,https://auto.drom.ru/region38/
+39,Калининградская область,https://auto.drom.ru/region39/
+40,Калужская область,https://auto.drom.ru/region40/
+41,Камчатский край,https://auto.drom.ru/region41/
+42,Кемеровская область,https://auto.drom.ru/region42/
+43,Кировская область,https://auto.drom.ru/region43/
+44,Костромская область,https://auto.drom.ru/region44/
+45,Курганская область,https://auto.drom.ru/region45/
+46,Курская область,https://auto.drom.ru/region46/
+47,Ленинградская область,https://auto.drom.ru/region47/
+48,Липецкая область,https://auto.drom.ru/region48/
+49,Магаданская область,https://auto.drom.ru/region49/
+50,Московская область,https://auto.drom.ru/region50/
+51,Мурманская область,https://auto.drom.ru/region51/
+52,Нижегородская область,https://auto.drom.ru/region52/
+53,Новгородская область,https://auto.drom.ru/region53/
+54,Новосибирская область,https://auto.drom.ru/region54/
+55,Омская область,https://auto.drom.ru/region55/
+56,Оренбургская область,https://auto.drom.ru/region56/
+57,Орловская область,https://auto.drom.ru/region57/
+58,Пензенская область,https://auto.drom.ru/region58/
+59,Пермский край,https://auto.drom.ru/region59/
+60,Псковская область,https://auto.drom.ru/region60/
+61,Ростовская область,https://auto.drom.ru/region61/
+62,Рязанская область,https://auto.drom.ru/region62/
+63,Самарская область,https://auto.drom.ru/region63/
+64,Саратовская область,https://auto.drom.ru/region64/
+65,Сахалинская область,https://auto.drom.ru/region65/
+66,Свердловская область,https://auto.drom.ru/region66/
+67,Смоленская область,https://auto.drom.ru/region67/
+68,Тамбовская область,https://auto.drom.ru/region68/
+69,Тверская область,https://auto.drom.ru/region69/
+70,Томская область,https://auto.drom.ru/region70/
+71,Тульская область,https://auto.drom.ru/region71/
+72,Тюменская область,https://auto.drom.ru/region72/
+73,Ульяновская область,https://auto.drom.ru/region73/
+74,Челябинская область,https://auto.drom.ru/region74/
+76,Ярославская область,https://auto.drom.ru/region76/
+77,Москва,https://auto.drom.ru/region77/
+78,Санкт-Петербург,https://auto.drom.ru/region78/
+79,Еврейская автономная область,https://auto.drom.ru/region79/
+83,Ненецкий автономный округ,https://auto.drom.ru/region83/
+86,Ханты-Мансийский автономный округ,https://auto.drom.ru/region86/
+87,Чукотский автономный округ,https://auto.drom.ru/region87/
+89,Ямало-Ненецкий автономный округ,https://auto.drom.ru/region89/
+101,Забайкальский край,https://auto.drom.ru/region101/
+102,Республика Крым,https://auto.drom.ru/region102/
