@@ -2,9 +2,9 @@
 My first python parser. It works with russian web-site drom.ru.
 
  You can:
-    - Collect data in the target russian region
-    - Collect only cars by brand
-    - Collect cars by brand and model
+   - Collect data in the target russian region
+   - Collect only cars by brand
+   - Collect cars by brand and model
 
 Required Libraries:
   - bs4
